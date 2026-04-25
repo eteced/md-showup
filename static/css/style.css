@@ -542,6 +542,12 @@ th.sort-desc .sort-indicator::after {
     background: var(--primary-light);
 }
 
+.toc-content li a.toc-active {
+    color: var(--primary);
+    background: var(--primary-light);
+    font-weight: 600;
+}
+
 .toc-content .toc-h1 { padding-left: 14px; font-weight: 600; }
 .toc-content .toc-h2 { padding-left: 26px; }
 .toc-content .toc-h3 { padding-left: 38px; font-size: 12px; }

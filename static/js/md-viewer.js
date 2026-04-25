@@ -130,11 +130,16 @@ const MdViewer = {
 
         if (headings.length === 0) {
             tocEl.textContent = "No headings";
+            this._headings = [];
+            this._tocLinks = [];
             return;
         }
 
+        this._headings = Array.from(headings);
+        this._tocLinks = [];
+
         const ul = document.createElement("ul");
-        headings.forEach((h, i) => {
+        this._headings.forEach((h, i) => {
             const id = "toc-heading-" + i;
             h.id = id;
             const li = document.createElement("li");
@@ -142,14 +147,63 @@ const MdViewer = {
             const a = document.createElement("a");
             a.href = "#" + id;
             a.textContent = h.textContent;
+            a.dataset.tocIndex = i;
             a.addEventListener("click", (e) => {
                 e.preventDefault();
                 h.scrollIntoView({ behavior: "smooth", block: "start" });
             });
             li.appendChild(a);
             ul.appendChild(li);
+            this._tocLinks.push(a);
         });
         tocEl.appendChild(ul);
+        this.initScrollSync();
+    },
+
+    // ---- Scroll Sync: highlight active TOC item ----
+    _headings: [],
+    _tocLinks: [],
+    _scrollSyncInited: false,
+    _activeTocIndex: -1,
+
+    initScrollSync() {
+        if (this._scrollSyncInited) return;
+        this._scrollSyncInited = true;
+
+        const wrapper = document.getElementById("md-content-wrapper");
+        const tocEl = document.getElementById("toc-content");
+
+        wrapper.addEventListener("scroll", () => {
+            const idx = this._findActiveHeading(wrapper);
+            if (idx === this._activeTocIndex) return;
+            this._activeTocIndex = idx;
+
+            this._tocLinks.forEach((a, i) => {
+                a.classList.toggle("toc-active", i === idx);
+            });
+
+            if (idx >= 0 && this._tocLinks[idx]) {
+                const link = this._tocLinks[idx];
+                link.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+        });
+    },
+
+    _findActiveHeading(wrapper) {
+        const scrollTop = wrapper.scrollTop;
+        const offset = 8;
+        let active = -1;
+
+        for (let i = 0; i < this._headings.length; i++) {
+            const h = this._headings[i];
+            const top = h.getBoundingClientRect().top - wrapper.getBoundingClientRect().top + scrollTop;
+            if (top <= scrollTop + offset) {
+                active = i;
+            } else {
+                break;
+            }
+        }
+        return active;
     },
 
     // ---- TOC Toggle ----

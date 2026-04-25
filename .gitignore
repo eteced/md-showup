@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+config.py
+.font_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+purpose.md
