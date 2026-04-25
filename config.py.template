@@ -1,0 +1,8 @@
+import os
+
+API_KEY = "your-secret-api-key-here"
+MD_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "md_files")
+SESSION_SECRET = "your-random-session-secret-here"
+SESSION_DURATION_HOURS = 24
+DEFAULT_PAGE_SIZE = 50
+PORT = 5000
