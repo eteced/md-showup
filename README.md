@@ -6,11 +6,8 @@ A modern Markdown file browsing website built with Flask. Browse, sort, and rend
 
 ## Screenshots
 
-<!-- TODO: Add screenshots here -->
-<!--
 ![File List](screenshots/file-list.png)
 ![Markdown Viewer](screenshots/viewer.png)
--->
 
 ## Features
 
