@@ -5,6 +5,7 @@ const MdViewer = {
     defaultReopenTop: null, // computed on init
 
     init() {
+        console.log("[MdViewer] init, katex:", typeof window.katex);
         this.md = window.markdownit({
             html: false,
             linkify: true,
@@ -18,6 +19,7 @@ const MdViewer = {
                 return "";
             },
         });
+        this.md.use(this._katexPlugin);
 
         this.initDivider();
         this.initTocToggle();
@@ -28,6 +30,86 @@ const MdViewer = {
         if (path) {
             this.loadFile(path);
         }
+    },
+
+    // ---- KaTeX math plugin for markdown-it ----
+    _katexPlugin(md) {
+        // Inline math: $...$ (must be before 'text' rule so backslash commands like \phi aren't consumed by escape rule)
+        md.inline.ruler.before("text", "math_inline", (state, silent) => {
+            const start = state.pos;
+            if (start >= state.posMax) return false;
+            if (state.src.charCodeAt(start) !== 0x24) return false; // $
+
+            // $ followed by digit = currency, not math
+            if (start + 1 < state.posMax && state.src.charCodeAt(start + 1) >= 0x30 && state.src.charCodeAt(start + 1) <= 0x39) return false;
+
+            // Must not be escaped \$
+            if (start > 0 && state.src.charCodeAt(start - 1) === 0x5C) return false;
+
+            // Scan for closing $ (not preceded by \)
+            let pos = start + 1;
+            let found = -1;
+            while (pos < state.posMax) {
+                const ch = state.src.charCodeAt(pos);
+                if (ch === 0x24) {
+                    // closing $ followed by digit = currency
+                    if (pos + 1 < state.posMax && state.src.charCodeAt(pos + 1) >= 0x30 && state.src.charCodeAt(pos + 1) <= 0x39) { pos++; continue; }
+                    if (pos === 0 || state.src.charCodeAt(pos - 1) !== 0x5C) {
+                        found = pos;
+                        break;
+                    }
+                }
+                // No newlines inside inline math
+                if (ch === 0x0A) return false;
+                pos++;
+            }
+            if (found === -1 || found === start + 1) return false;
+
+            if (silent) return true;
+            const content = state.src.slice(start + 1, found);
+            const token = state.push("math_inline", "math", 0);
+            token.content = content;
+            state.pos = found + 1;
+            return true;
+        });
+
+        // Block math: $$...$$
+        md.block.ruler.before("paragraph", "math_block", (state, startLine, endLine, silent) => {
+            const begin = state.bMarks[startLine] + state.tShift[startLine];
+            const src = state.src.slice(begin);
+
+            if (src.charCodeAt(0) !== 0x24 || src.charCodeAt(1) !== 0x24) return false;
+
+            const endIdx = src.indexOf("$$", 2);
+            if (endIdx === -1) return false;
+
+            if (silent) return true;
+
+            const content = src.slice(2, endIdx).trim();
+            const lineCount = src.slice(0, endIdx + 2).split("\n").length;
+            const token = state.push("math_block", "math", 0);
+            token.content = content;
+            token.block = true;
+            token.map = [startLine, startLine + lineCount - 1];
+            state.line = startLine + lineCount;
+            return true;
+        });
+
+        md.renderer.rules.math_inline = (tokens, idx) => {
+            try {
+                return katex.renderToString(tokens[idx].content, { throwOnError: false });
+            } catch (e) {
+                return '<span class="katex-error">' + MdViewer._escHtml(tokens[idx].content) + "</span>";
+            }
+        };
+
+        md.renderer.rules.math_block = (tokens, idx) => {
+            try {
+                return '<div class="katex-block">' + katex.renderToString(tokens[idx].content, { throwOnError: false, displayMode: true }) + "</div>";
+            } catch (e) {
+                return '<div class="katex-error katex-block">' + MdViewer._escHtml(tokens[idx].content) + "</div>";
+            }
+        };
     },
 
     async loadFile(path) {

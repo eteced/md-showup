@@ -20,6 +20,7 @@ A modern Markdown file browsing website built with Flask. Browse, sort, and rend
 - **Recursive Scanning** — Scans all subdirectories, shows directory path prefix in file list
 - **Persistent Settings** — Sort state, page size, TOC width/ratio, TOC collapse state, reopen button position all saved to localStorage
 - **CJK Monospace Font** — Self-hosted Noto Sans Mono CJK SC for proper Chinese + monospace alignment in code blocks
+- **Math Rendering** — KaTeX for LaTeX math: inline `$...$` and block `$$...$$`, all self-hosted
 
 ## Quick Start
 
@@ -73,6 +74,9 @@ All settings are in `config.py`:
 │   └── vendor/             # Self-hosted JS/CSS libraries
 │       ├── markdown-it.min.js
 │       ├── highlight.min.js
+│       ├── katex.min.js
+│       ├── katex.min.css
+│       ├── katex-fonts/    # KaTeX woff2 fonts
 │       └── github.min.css
 ├── templates/
 │   ├── files.html          # File list page
@@ -94,6 +98,7 @@ All settings are in `config.py`:
 - **Frontend**: Vanilla HTML/CSS/JS (no frameworks)
 - **Markdown**: markdown-it (client-side)
 - **Syntax Highlighting**: highlight.js (client-side)
+- **Math**: KaTeX (client-side, self-hosted)
 - **Font**: Noto Sans Mono CJK SC (self-hosted)
 
 ## License

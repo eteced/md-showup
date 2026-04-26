@@ -19,13 +19,14 @@ MD Showup is a self-hosted Markdown file browsing website. Users authenticate wi
 
 - `auth.js` — Shared auth module. `checkOrPrompt()` on page load: if cookie exists, verify via API; else show login overlay. `_readyCalled` flag prevents double init.
 - `file-list.js` — Fetches `/api/files`, renders sortable table. Sort state (`md_sort_by`, `md_sort_order`) and page size (`md_page_size`) persisted to localStorage. Cell auto-scroll on hover for overflow content.
-- `md-viewer.js` — Fetches `/api/file/<path>`, renders with markdown-it. Extracts headings → TOC sidebar. TOC collapse state + reopen button position persisted. Draggable divider between TOC and content. Code blocks and blockquotes wrapped in collapsible containers.
+- `md-viewer.js` — Fetches `/api/file/<path>`, renders with markdown-it + KaTeX math. Extracts headings → TOC sidebar. TOC collapse state + reopen button position persisted. Draggable divider between TOC and content. Code blocks and blockquotes wrapped in collapsible containers. Scroll sync highlights active TOC item.
 - `utils.js` — `getStored`/`setStored` localStorage wrappers, `getSessionCookie()` reader.
 - `files-page.js` / `viewer-page.js` — Page-specific init, call `onPageReady()` after auth.
 
 ### Static Assets
 
-- `static/vendor/` — Self-hosted markdown-it, highlight.js, github.min.css (no CDN dependencies)
+- `static/vendor/` — Self-hosted markdown-it, highlight.js, KaTeX, github.min.css (no CDN dependencies)
+- `static/vendor/katex-fonts/` — Self-hosted KaTeX woff2 fonts
 - `static/fonts/` — Self-hosted Noto Sans Mono CJK SC (16MB OTF, for CJK monospace in code blocks)
 - `static/css/style.css` — CSS variables for theming (`--primary`, `--bg`, etc.), full-viewport layout
 
@@ -51,7 +52,8 @@ MD Showup is a self-hosted Markdown file browsing website. Users authenticate wi
 
 ### Modifying the markdown viewer
 - Rendering: `md-viewer.js` `loadFile()` and `makeCodeBlocksCollapsible()` / `makeBlockquotesCollapsible()`
-- TOC: `md-viewer.js` `buildTOC()`, `initTocToggle()`, `initReopenBtnDrag()`
+- Math: `md-viewer.js` `_katexPlugin()` — inline `$...$` and block `$$...$$` via KaTeX
+- TOC: `md-viewer.js` `buildTOC()`, `initTocToggle()`, `initReopenBtnDrag()`, `initScrollSync()`
 - Divider: `md-viewer.js` `initDivider()`
 - Styles: `style.css` `.md-content`, `.toc-panel`, `.code-block`, `.quote-block` sections
 
