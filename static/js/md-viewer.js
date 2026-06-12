@@ -73,28 +73,9 @@ const MdViewer = {
             return true;
         });
 
-        // Block math: $$...$$
-        md.block.ruler.before("paragraph", "math_block", (state, startLine, endLine, silent) => {
-            const begin = state.bMarks[startLine] + state.tShift[startLine];
-            const src = state.src.slice(begin);
-
-            if (src.charCodeAt(0) !== 0x24 || src.charCodeAt(1) !== 0x24) return false;
-
-            const endIdx = src.indexOf("$$", 2);
-            if (endIdx === -1) return false;
-
-            if (silent) return true;
-
-            const content = src.slice(2, endIdx).trim();
-            const lineCount = src.slice(0, endIdx + 2).split("\n").length;
-            const token = state.push("math_block", "math", 0);
-            token.content = content;
-            token.block = true;
-            token.map = [startLine, startLine + lineCount - 1];
-            state.line = startLine + lineCount;
-            return true;
-        });
-
+        // Block math: $$...$$ — preprocess the source before markdown-it sees it
+        // We extract $$...$$ blocks, replace with placeholders, render markdown,
+        // then replace placeholders with KaTeX output.
         md.renderer.rules.math_inline = (tokens, idx) => {
             try {
                 return katex.renderToString(tokens[idx].content, { throwOnError: false });
@@ -102,14 +83,70 @@ const MdViewer = {
                 return '<span class="katex-error">' + MdViewer._escHtml(tokens[idx].content) + "</span>";
             }
         };
+    },
 
-        md.renderer.rules.math_block = (tokens, idx) => {
-            try {
-                return '<div class="katex-block">' + katex.renderToString(tokens[idx].content, { throwOnError: false, displayMode: true }) + "</div>";
-            } catch (e) {
-                return '<div class="katex-error katex-block">' + MdViewer._escHtml(tokens[idx].content) + "</div>";
+    _mathBlocks: [],
+
+    // Preprocess: extract $$...$$ blocks and replace with placeholders
+    _preprocessMathBlocks(text) {
+        this._mathBlocks = [];
+        let result = "";
+        let pos = 0;
+
+        while (pos < text.length) {
+            const openIdx = text.indexOf("$$", pos);
+            if (openIdx === -1) { result += text.slice(pos); break; }
+            result += text.slice(pos, openIdx);
+
+            const closeIdx = text.indexOf("$$", openIdx + 2);
+            if (closeIdx === -1) { result += "$$"; pos = openIdx + 2; continue; }
+
+            const mathContent = text.slice(openIdx + 2, closeIdx);
+            const idx = this._mathBlocks.length;
+            result += "MATH" + idx + "MATH";
+            this._mathBlocks.push(mathContent);
+            pos = closeIdx + 2;
+        }
+
+        return result;
+    },
+
+    // Replace placeholders with KaTeX rendered output
+    _renderMathBlocks(container) {
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+        const pattern = /MATH(\d+)MATH/;
+
+        for (const node of textNodes) {
+            const text = node.textContent;
+            if (!text.includes("")) continue;
+            const parts = text.split(pattern);
+            if (parts.length < 3) continue;
+
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < parts.length; i++) {
+                if (i > 0) frag.appendChild(document.createTextNode(parts[i]));
+                i++;
+                if (i < parts.length) {
+                    const idx = parseInt(parts[i], 10);
+                    const math = this._mathBlocks[idx];
+                    if (math !== undefined) {
+                        const div = document.createElement("div");
+                        div.className = "katex-block";
+                        try {
+                            div.innerHTML = katex.renderToString(math.trim(), { throwOnError: false, displayMode: true });
+                        } catch (e) {
+                            div.className = "katex-error katex-block";
+                            div.textContent = math.trim();
+                        }
+                        frag.appendChild(div);
+                    }
+                }
             }
-        };
+            node.parentNode.replaceChild(frag, node);
+        }
     },
 
     async loadFile(path) {
@@ -121,7 +158,9 @@ const MdViewer = {
         document.title = data.name + " - MD Showup";
 
         const contentEl = document.getElementById("md-content");
-        contentEl.innerHTML = this.md.render(data.content);
+        const processed = this._preprocessMathBlocks(data.content);
+        contentEl.innerHTML = this.md.render(processed);
+        this._renderMathBlocks(contentEl);
 
         this.makeCodeBlocksCollapsible(contentEl);
         this.makeBlockquotesCollapsible(contentEl);
